@@ -49,7 +49,17 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 WORKDIR /app
 
-# Copiamos todo el proyecto primero
+# Copiamos los archivos de composer primero
+COPY composer.json composer.lock ./
+
+# Instalamos dependencias base
+RUN composer install --no-dev --optimize-autoloader
+
+# Instalamos Octane explícitamente
+RUN composer require laravel/octane:"^1.0" && \
+    php artisan octane:install --server=swoole
+
+# Ahora copiamos el resto del proyecto
 COPY . .
 
 # Copiamos y configuramos el archivo .env
@@ -61,11 +71,7 @@ RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env && \
     sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env
 
-# Instalamos dependencias primero
-RUN composer install --no-dev --optimize-autoloader && \
-    composer require laravel/octane --with-all-dependencies
-
-# Ahora que tenemos las dependencias, generamos la key
+# Generamos la key
 RUN php artisan key:generate --force
 
 # Configuramos permisos
@@ -74,7 +80,7 @@ RUN chmod -R 775 storage bootstrap/cache && \
 
 EXPOSE 5000
 
-# CMD con los comandos restantes
+# Comando para iniciar la aplicación
 CMD php artisan octane:install --server=swoole --force && \
     php artisan migrate --force && \
     php artisan optimize && \
