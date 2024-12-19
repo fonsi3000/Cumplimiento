@@ -47,16 +47,20 @@ RUN apt-get install -y mysql-server && \
     echo "[mysqld]" >> /etc/mysql/my.cnf && \
     echo "user = mysql" >> /etc/mysql/my.cnf && \
     echo "bind-address = 0.0.0.0" >> /etc/mysql/my.cnf && \
+    echo "default-authentication-plugin = mysql_native_password" >> /etc/mysql/my.cnf && \
     echo "skip-host-cache" >> /etc/mysql/my.cnf && \
     echo "skip-name-resolve" >> /etc/mysql/my.cnf && \
     service mysql start && \
     sleep 5 && \
-    mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '1524';" && \
-    mysql -u root -p1524 -e "CREATE DATABASE cumplimiento_db;" && \
-    mysql -u root -p1524 -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED WITH mysql_native_password BY '1524';" && \
-    mysql -u root -p1524 -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;" && \
-    mysql -u root -p1524 -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;" && \
-    mysql -u root -p1524 -e "FLUSH PRIVILEGES;"
+    # Configurar la contraseña de root y privilegios
+    mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '1524';" && \
+    mysql -e "CREATE DATABASE IF NOT EXISTS cumplimiento_db;" && \
+    mysql -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '1524';" && \
+    mysql -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED BY '1524';" && \
+    mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;" && \
+    mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;" && \
+    mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION;" && \
+    mysql -e "FLUSH PRIVILEGES;"
 
 # Agrega el repositorio de PHP e instala PHP y extensiones
 RUN add-apt-repository ppa:ondrej/php -y && \
@@ -85,7 +89,8 @@ RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_PORT=.*/DB_PORT=3306/' .env && \
     sed -i 's/DB_DATABASE=.*/DB_DATABASE=cumplimiento_db/' .env && \
     sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env && \
-    sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env
+    sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env && \
+    sed -i 's/SESSION_DRIVER=.*/SESSION_DRIVER=database/' .env
 
 # Instala dependencias
 RUN composer install --no-interaction --optimize-autoloader --no-dev && \
