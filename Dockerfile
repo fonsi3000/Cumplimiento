@@ -49,12 +49,13 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 WORKDIR /app
 
-# Copiamos todo el proyecto
+# Copiamos todo el proyecto primero
 COPY . .
 
-# Configuramos el archivo .env
-COPY .env.example .env
-RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
+# Generamos y configuramos el .env (cambio importante aquí)
+RUN cp .env.example .env && \
+    php artisan key:generate --force && \
+    sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_HOST=.*/DB_HOST=db/' .env && \
     sed -i 's/DB_PORT=.*/DB_PORT=3306/' .env && \
     sed -i 's/DB_DATABASE=.*/DB_DATABASE=cumplimiento_db/' .env && \
@@ -71,9 +72,8 @@ RUN chmod -R 775 storage bootstrap/cache && \
 
 EXPOSE 5000
 
-# Incorporamos todos los comandos del entrypoint directamente
-CMD php artisan key:generate --force && \
-    php artisan octane:install --server=swoole --force && \
+# Modificamos el CMD para no generar la key de nuevo
+CMD php artisan octane:install --server=swoole --force && \
     php artisan migrate --force && \
     php artisan optimize && \
     php artisan config:cache && \
