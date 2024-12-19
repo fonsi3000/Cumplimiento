@@ -3,6 +3,7 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Bogota
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # Instalamos paquetes esenciales primero
 RUN apt-get update && apt-get install -y \
@@ -41,26 +42,32 @@ RUN apt-get update && apt-get install -y \
     php8.2-intl \
     php8.2-dom \
     php8.2-fileinfo \
+    php8.2-tokenizer \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalamos Swoole deshabilitando brotli
 RUN pecl channel-update pecl.php.net && \
     pecl install --configureoptions 'enable-brotli="no"' swoole && \
-    echo "extension=swoole.so" > /etc/php/8.2/cli/conf.d/swoole.ini
+    echo "extension=swoole.so" > /etc/php/8.2/cli/conf.d/swoole.ini && \
+    echo "extension=swoole.so" > /etc/php/8.2/cli/conf.d/20-swoole.ini
 
 # Instalamos Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 WORKDIR /app
 
-# Copiamos los archivos de composer y el .env ejemplo
-COPY composer.json composer.lock .env.example ./
+# Copiamos los archivos de composer primero
+COPY composer.json composer.lock ./
 
-# Instalamos las dependencias con más memoria y mostrando errores detallados
-RUN php -d memory_limit=-1 /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction --verbose
+# Instalamos las dependencias
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Copiamos el resto de la aplicación
 COPY . .
+
+# Establecemos los permisos correctos
+RUN chmod -R 775 storage bootstrap/cache && \
+    chown -R www-data:www-data /app
 
 # Configuramos el archivo .env
 RUN cp .env.example .env && \
@@ -71,21 +78,16 @@ RUN cp .env.example .env && \
     sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env && \
     sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env
 
-# Generamos la key de la aplicación
-RUN php artisan key:generate
-
-# Instalamos Octane
-RUN php -d memory_limit=-1 /usr/local/bin/composer require laravel/octane --no-interaction && \
+# Generamos la key e instalamos Octane
+RUN php artisan key:generate && \
+    composer require laravel/octane --no-interaction && \
     php artisan octane:install --server=swoole
 
-# Configuramos permisos
-RUN chown -R www-data:www-data /app && \
-    chmod -R 775 storage bootstrap/cache
-
-# Copiamos y configuramos el script de inicio
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+# Optimizaciones finales
+RUN php artisan optimize:clear && \
+    php artisan optimize && \
+    php artisan view:cache
 
 EXPOSE 5000
 
-CMD ["/app/start.sh"]
+CMD ["php", "artisan", "octane:start", "--server=swoole", "--host=0.0.0.0", "--port=5000"]

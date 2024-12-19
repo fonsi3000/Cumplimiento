@@ -8,14 +8,11 @@ services:
     ports:
       - "5000:5000"
     environment:
+      - APP_ENV=production
       - DB_HOST=db
       - DB_DATABASE=cumplimiento_db
       - DB_USERNAME=root
       - DB_PASSWORD=1524
-    volumes:
-      - .:/app
-      - /app/vendor
-      - /app/node_modules
     depends_on:
       - db
     networks:
