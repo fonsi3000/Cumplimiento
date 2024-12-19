@@ -73,12 +73,6 @@ RUN composer require laravel/octane --no-interaction \
 # Configuramos permisos
 RUN chmod -R 775 storage bootstrap/cache
 
-# Script de inicio simplificado
-RUN echo '#!/bin/bash' > /app/start.sh && \
-    echo 'php artisan migrate --force' >> /app/start.sh && \
-    echo 'php artisan octane:start --server=swoole --host=0.0.0.0 --port=5000' >> /app/start.sh && \
-    chmod +x /app/start.sh
-
 EXPOSE 5000
 
-CMD ["/app/start.sh"]
+CMD ["/app/docker-entrypoint.sh"]
