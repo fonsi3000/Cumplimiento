@@ -52,8 +52,9 @@ WORKDIR /app
 # Copiamos composer.json y composer.lock primero
 COPY composer.json composer.lock ./
 
-# Instalamos dependencias
-RUN composer install --no-dev --optimize-autoloader --no-scripts
+# Instalamos dependencias y Octane
+RUN composer install --no-dev --optimize-autoloader --no-scripts && \
+    composer require laravel/octane --with-all-dependencies
 
 # Copiamos el resto de los archivos
 COPY . .
@@ -67,9 +68,10 @@ RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env && \
     sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env
 
-# Aplicamos permisos
+# Configuramos permisos
 RUN chmod -R 775 storage bootstrap/cache && \
-    chown -R www-data:www-data storage bootstrap/cache
+    chown -R www-data:www-data storage bootstrap/cache && \
+    php artisan octane:install --server=swoole
 
 EXPOSE 5000
 
