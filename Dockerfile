@@ -49,17 +49,10 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 WORKDIR /app
 
-# Copiamos composer.json y composer.lock primero
-COPY composer.json composer.lock ./
-
-# Instalamos dependencias y Octane
-RUN composer install --no-dev --optimize-autoloader --no-scripts && \
-    composer require laravel/octane --with-all-dependencies
-
-# Copiamos el resto de los archivos
+# Copiamos todo el proyecto primero
 COPY . .
 
-# Copiamos y configuramos el archivo .env
+# Configuramos el archivo .env
 COPY .env.example .env
 RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_HOST=.*/DB_HOST=db/' .env && \
@@ -67,6 +60,10 @@ RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_DATABASE=.*/DB_DATABASE=cumplimiento_db/' .env && \
     sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env && \
     sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env
+
+# Instalamos dependencias
+RUN composer install --no-dev --optimize-autoloader && \
+    composer require laravel/octane --with-all-dependencies
 
 # Configuramos permisos
 RUN chmod -R 775 storage bootstrap/cache && \
