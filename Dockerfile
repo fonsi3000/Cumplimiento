@@ -53,7 +53,13 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 # Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos de la aplicación al contenedor
+# Copia los archivos de composer primero
+COPY composer.json composer.lock ./
+
+# Instala dependencias de PHP
+RUN composer install --no-interaction --optimize-autoloader --no-dev
+
+# Ahora copia el resto de los archivos
 COPY . .
 
 # Configura el archivo .env
@@ -110,9 +116,6 @@ AWS_USE_PATH_STYLE_ENDPOINT=false\n\
 VITE_APP_NAME=\"\${APP_NAME}\"\n\
 OCTANE_SERVER=swoole" > .env
 
-# Instala dependencias de PHP
-RUN composer install --no-interaction --optimize-autoloader --no-dev
-
 # Instala Laravel Octane
 RUN composer require laravel/octane --no-interaction
 
@@ -130,44 +133,9 @@ RUN chown -R www-data:www-data /app && \
 # Genera la clave de la aplicación si no existe
 RUN php artisan key:generate --force
 
-# Crea un script de inicio robusto
-RUN echo '#!/bin/bash\n\
-# Asegura los directorios de MySQL\n\
-mkdir -p /var/run/mysqld\n\
-mkdir -p /var/lib/mysql\n\
-chown -R mysql:mysql /var/run/mysqld\n\
-chown -R mysql:mysql /var/lib/mysql\n\
-\n\
-# Inicia MySQL con manejo de errores\n\
-service mysql start\n\
-status=$?\n\
-if [ $status -ne 0 ]; then\n\
-    echo "Failed to start MySQL: $status"\n\
-    exit $status\n\
-fi\n\
-\n\
-# Espera a que MySQL esté realmente disponible\n\
-echo "Waiting for MySQL to be ready..."\n\
-for i in {1..30}; do\n\
-    if mysqladmin ping -h"localhost" -u"root" -p"1524" --silent; then\n\
-        break\n\
-    fi\n\
-    echo "Waiting for MySQL to be ready... $i/30"\n\
-    sleep 1\n\
-done\n\
-\n\
-# Ejecuta las migraciones\n\
-echo "Running migrations..."\n\
-php artisan migrate --force\n\
-\n\
-# Inicia el servidor de desarrollo de Node\n\
-echo "Starting Vite development server..."\n\
-npm run dev & \n\
-\n\
-# Inicia Laravel Octane\n\
-echo "Starting Laravel Octane..."\n\
-php artisan octane:start --server=swoole --host=0.0.0.0 --port=5000 --workers=4 --task-workers=2\n\
-' > /app/start.sh && chmod +x /app/start.sh
+# Copia el entrypoint y dale permisos
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Comando para iniciar todos los servicios
 CMD ["/entrypoint.sh"]
