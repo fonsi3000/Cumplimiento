@@ -49,7 +49,7 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 WORKDIR /app
 
-# Copiamos todo el proyecto primero
+# Copiamos todo el proyecto
 COPY . .
 
 # Configuramos el archivo .env
@@ -61,15 +61,22 @@ RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env && \
     sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env
 
-# Instalamos dependencias
+# Instalamos dependencias y Octane
 RUN composer install --no-dev --optimize-autoloader && \
     composer require laravel/octane --with-all-dependencies
 
 # Configuramos permisos
 RUN chmod -R 775 storage bootstrap/cache && \
-    chown -R www-data:www-data storage bootstrap/cache && \
-    php artisan octane:install --server=swoole
+    chown -R www-data:www-data storage bootstrap/cache
 
 EXPOSE 5000
 
-CMD ["/app/docker-entrypoint.sh"]
+# Incorporamos todos los comandos del entrypoint directamente
+CMD php artisan key:generate --force && \
+    php artisan octane:install --server=swoole --force && \
+    php artisan migrate --force && \
+    php artisan optimize && \
+    php artisan config:cache && \
+    php artisan route:cache && \
+    php artisan view:cache && \
+    php artisan octane:start --server=swoole --host=0.0.0.0 --port=5000
