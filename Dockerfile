@@ -52,19 +52,21 @@ WORKDIR /app
 # Copiamos todo el proyecto primero
 COPY . .
 
-# Generamos y configuramos el .env (cambio importante aquí)
-RUN cp .env.example .env && \
-    php artisan key:generate --force && \
-    sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
+# Copiamos y configuramos el archivo .env
+COPY .env.example .env
+RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_HOST=.*/DB_HOST=db/' .env && \
     sed -i 's/DB_PORT=.*/DB_PORT=3306/' .env && \
     sed -i 's/DB_DATABASE=.*/DB_DATABASE=cumplimiento_db/' .env && \
     sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env && \
     sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env
 
-# Instalamos dependencias y Octane
+# Instalamos dependencias primero
 RUN composer install --no-dev --optimize-autoloader && \
     composer require laravel/octane --with-all-dependencies
+
+# Ahora que tenemos las dependencias, generamos la key
+RUN php artisan key:generate --force
 
 # Configuramos permisos
 RUN chmod -R 775 storage bootstrap/cache && \
@@ -72,7 +74,7 @@ RUN chmod -R 775 storage bootstrap/cache && \
 
 EXPOSE 5000
 
-# Modificamos el CMD para no generar la key de nuevo
+# CMD con los comandos restantes
 CMD php artisan octane:install --server=swoole --force && \
     php artisan migrate --force && \
     php artisan optimize && \
