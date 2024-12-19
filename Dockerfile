@@ -1,3 +1,4 @@
+# Dockerfile
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -38,6 +39,8 @@ RUN apt-get update && apt-get install -y \
     php8.2-bcmath \
     php8.2-dev \
     php8.2-intl \
+    php8.2-dom \
+    php8.2-fileinfo \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalamos Swoole deshabilitando brotli
@@ -50,18 +53,18 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 WORKDIR /app
 
-# Copiamos los archivos de composer primero
-COPY composer.json composer.lock ./
+# Copiamos los archivos de composer y el .env ejemplo
+COPY composer.json composer.lock .env.example ./
 
-# Instalamos las dependencias
-RUN composer install --no-dev --optimize-autoloader
+# Instalamos las dependencias con más memoria y mostrando errores detallados
+RUN php -d memory_limit=-1 /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction --verbose
 
 # Copiamos el resto de la aplicación
 COPY . .
 
 # Configuramos el archivo .env
-COPY .env.example .env
-RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
+RUN cp .env.example .env && \
+    sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_HOST=.*/DB_HOST=db/' .env && \
     sed -i 's/DB_PORT=.*/DB_PORT=3306/' .env && \
     sed -i 's/DB_DATABASE=.*/DB_DATABASE=cumplimiento_db/' .env && \
@@ -71,9 +74,9 @@ RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
 # Generamos la key de la aplicación
 RUN php artisan key:generate
 
-# Instalamos Octane después de que todo esté configurado
-RUN composer require laravel/octane --no-interaction
-RUN php artisan octane:install --server=swoole
+# Instalamos Octane
+RUN php -d memory_limit=-1 /usr/local/bin/composer require laravel/octane --no-interaction && \
+    php artisan octane:install --server=swoole
 
 # Configuramos permisos
 RUN chown -R www-data:www-data /app && \
