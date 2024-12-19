@@ -72,9 +72,9 @@ RUN php artisan key:generate --force
 RUN chmod -R 775 storage bootstrap/cache && \
     chown -R www-data:www-data storage bootstrap/cache
 
+EXPOSE 5000
 
-
-# CMD con los comandos restantes. 
+# CMD con los comandos restantes
 CMD php artisan octane:install --server=swoole --force && \
     php artisan migrate --force && \
     php artisan optimize && \
@@ -82,5 +82,3 @@ CMD php artisan octane:install --server=swoole --force && \
     php artisan route:cache && \
     php artisan view:cache && \
     php artisan octane:start --server=swoole --host=0.0.0.0 --port=5000
-
-EXPOSE 5000
