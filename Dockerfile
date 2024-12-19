@@ -74,10 +74,10 @@ RUN composer require laravel/octane --no-interaction \
 RUN chmod -R 775 storage bootstrap/cache
 
 # Script de inicio simplificado
-RUN echo '#!/bin/bash\n\
-php artisan migrate --force\n\
-php artisan octane:start --server=swoole --host=0.0.0.0 --port=5000\n\
-' > /app/start.sh && chmod +x /app/start.sh
+RUN echo '#!/bin/bash' > /app/start.sh && \
+    echo 'php artisan migrate --force' >> /app/start.sh && \
+    echo 'php artisan octane:start --server=swoole --host=0.0.0.0 --port=5000' >> /app/start.sh && \
+    chmod +x /app/start.sh
 
 EXPOSE 5000
 
