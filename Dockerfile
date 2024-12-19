@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     libz-dev \
     libpcre3-dev \
     libicu-dev \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Agregamos el repositorio de PHP
@@ -49,10 +50,17 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 WORKDIR /app
 
+# Copiamos los archivos de composer primero
+COPY composer.json composer.lock ./
+
+# Instalamos las dependencias
+RUN composer install --no-dev --optimize-autoloader
+
+# Copiamos el resto de la aplicación
 COPY . .
-COPY .env.example .env
 
 # Configuramos el archivo .env
+COPY .env.example .env
 RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_HOST=.*/DB_HOST=db/' .env && \
     sed -i 's/DB_PORT=.*/DB_PORT=3306/' .env && \
@@ -60,18 +68,16 @@ RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env && \
     sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env
 
-# Instalamos dependencias de Composer
-RUN composer install --no-dev --optimize-autoloader
-
 # Generamos la key de la aplicación
 RUN php artisan key:generate
 
-# Instalamos Octane
-RUN composer require laravel/octane --no-interaction \
-    && php artisan octane:install --server=swoole
+# Instalamos Octane después de que todo esté configurado
+RUN composer require laravel/octane --no-interaction
+RUN php artisan octane:install --server=swoole
 
 # Configuramos permisos
-RUN chmod -R 775 storage bootstrap/cache
+RUN chown -R www-data:www-data /app && \
+    chmod -R 775 storage bootstrap/cache
 
 # Copiamos y configuramos el script de inicio
 COPY start.sh /app/start.sh
