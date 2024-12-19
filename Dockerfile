@@ -3,10 +3,10 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Bogota
-ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Instalamos paquetes esenciales primero
-RUN apt-get update && apt-get install -y \
+# Instalamos paquetes esenciales
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y \
     software-properties-common \
     curl \
     wget \
@@ -21,73 +21,91 @@ RUN apt-get update && apt-get install -y \
     libpcre3-dev \
     libicu-dev \
     git \
-    && rm -rf /var/lib/apt/lists/*
+    sudo \
+    openssh-client \
+    libxml2-dev \
+    libonig-dev \
+    autoconf \
+    gcc \
+    g++ \
+    make \
+    libfreetype6-dev \
+    libjpeg-turbo8-dev \
+    libpng-dev \
+    libzip-dev
 
-# Agregamos el repositorio de PHP
-RUN add-apt-repository ppa:ondrej/php -y
+# Instala Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs
 
-# Actualizamos e instalamos PHP y extensiones necesarias
-RUN apt-get update && apt-get install -y \
-    php8.2 \
-    php8.2-cli \
-    php8.2-common \
-    php8.2-mysql \
-    php8.2-zip \
-    php8.2-gd \
-    php8.2-mbstring \
-    php8.2-curl \
-    php8.2-xml \
-    php8.2-bcmath \
-    php8.2-dev \
-    php8.2-intl \
-    php8.2-dom \
-    php8.2-fileinfo \
-    php8.2-tokenizer \
-    && rm -rf /var/lib/apt/lists/*
+# Instala y configura MySQL
+RUN apt-get install -y mysql-server && \
+    mkdir -p /var/run/mysqld && \
+    mkdir -p /var/lib/mysql && \
+    chown -R mysql:mysql /var/run/mysqld && \
+    chown -R mysql:mysql /var/lib/mysql && \
+    echo "[mysqld]" >> /etc/mysql/my.cnf && \
+    echo "user = mysql" >> /etc/mysql/my.cnf && \
+    echo "bind-address = 0.0.0.0" >> /etc/mysql/my.cnf && \
+    echo "skip-host-cache" >> /etc/mysql/my.cnf && \
+    echo "skip-name-resolve" >> /etc/mysql/my.cnf && \
+    service mysql start && \
+    sleep 5 && \
+    mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '1524';" && \
+    mysql -u root -p1524 -e "CREATE DATABASE cumplimiento_db;" && \
+    mysql -u root -p1524 -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED WITH mysql_native_password BY '1524';" && \
+    mysql -u root -p1524 -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;" && \
+    mysql -u root -p1524 -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;" && \
+    mysql -u root -p1524 -e "FLUSH PRIVILEGES;"
 
-# Instalamos Swoole deshabilitando brotli
-RUN pecl channel-update pecl.php.net && \
-    pecl install --configureoptions 'enable-brotli="no"' swoole && \
-    echo "extension=swoole.so" > /etc/php/8.2/cli/conf.d/swoole.ini && \
-    echo "extension=swoole.so" > /etc/php/8.2/cli/conf.d/20-swoole.ini
+# Agrega el repositorio de PHP e instala PHP y extensiones
+RUN add-apt-repository ppa:ondrej/php -y && \
+    apt-get update && \
+    apt-get install -y php8.2 php8.2-fpm php8.2-cli php8.2-common \
+    php8.2-mysql php8.2-zip php8.2-gd php8.2-mbstring php8.2-curl php8.2-xml php8.2-bcmath \
+    php8.2-intl php8.2-readline php8.2-pcov php8.2-dev
 
-# Instalamos Composer
+# Instala Swoole
+RUN pecl install swoole && \
+    echo "extension=swoole.so" > /etc/php/8.2/mods-available/swoole.ini && \
+    phpenmod swoole
+
+# Instala Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 WORKDIR /app
 
-# Copiamos los archivos de composer primero
-COPY composer.json composer.lock ./
-
-# Instalamos las dependencias
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-
-# Copiamos el resto de la aplicación
+# Copia los archivos del proyecto
 COPY . .
 
-# Establecemos los permisos correctos
-RUN chmod -R 775 storage bootstrap/cache && \
-    chown -R www-data:www-data /app
-
-# Configuramos el archivo .env
-RUN cp .env.example .env && \
-    sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
-    sed -i 's/DB_HOST=.*/DB_HOST=db/' .env && \
+# Configura el archivo .env
+COPY .env.example .env
+RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
+    sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env && \
     sed -i 's/DB_PORT=.*/DB_PORT=3306/' .env && \
     sed -i 's/DB_DATABASE=.*/DB_DATABASE=cumplimiento_db/' .env && \
     sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env && \
     sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env
 
-# Generamos la key e instalamos Octane
-RUN php artisan key:generate && \
+# Instala dependencias
+RUN composer install --no-interaction --optimize-autoloader --no-dev && \
     composer require laravel/octane --no-interaction && \
     php artisan octane:install --server=swoole
 
-# Optimizaciones finales
-RUN php artisan optimize:clear && \
-    php artisan optimize && \
-    php artisan view:cache
+# Instala y construye los assets
+RUN npm install && npm run build
+
+# Configura permisos
+RUN chown -R www-data:www-data /app && \
+    chmod -R 775 storage bootstrap/cache
+
+# Genera la key de la aplicación
+RUN php artisan key:generate --force
+
+# Prepara el script de inicio
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 EXPOSE 5000
 
-CMD ["php", "artisan", "octane:start", "--server=swoole", "--host=0.0.0.0", "--port=5000"]
+CMD ["/app/start.sh"]
