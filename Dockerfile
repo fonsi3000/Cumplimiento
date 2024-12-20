@@ -14,8 +14,12 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libbrotli-dev \
     pkg-config \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    libicu-dev
+
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Configura git para el directorio
+RUN git config --global --add safe.directory /var/www/html
 
 # Instala extensiones PHP
 RUN docker-php-ext-install \
@@ -25,11 +29,15 @@ RUN docker-php-ext-install \
     pcntl \
     bcmath \
     gd \
-    zip
+    zip \
+    intl
 
-# Instala Swoole deshabilitando brotli y otras extensiones no necesarias
-RUN pecl install swoole --enable-brotli=no --enable-sockets=no --enable-openssl=no --enable-http2=no --enable-mysqlnd=no \
-    && docker-php-ext-enable swoole
+# Configura intl
+RUN docker-php-ext-configure intl
+
+# Instala Swoole
+RUN pecl install swoole --enable-brotli=no --enable-sockets=no --enable-openssl=no --enable-http2=no --enable-mysqlnd=no
+RUN docker-php-ext-enable swoole
 
 # Instala Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -41,14 +49,21 @@ WORKDIR /var/www/html
 COPY . .
 COPY .env.docker .env
 
-# Instala dependencias de Laravel
-RUN composer install --no-interaction --optimize-autoloader --no-dev \
-    && composer require laravel/octane \
-    && php artisan octane:install --server=swoole
+# Configura permisos antes de la instalación
+RUN chown -R www-data:www-data /var/www/html && \
+    chmod -R 755 /var/www/html
 
-# Configura permisos
-RUN chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 755 storage bootstrap/cache
+# Instala dependencias de Laravel como www-data
+USER www-data
+RUN composer install --no-interaction --optimize-autoloader --no-dev && \
+    composer require laravel/octane && \
+    php artisan octane:install --server=swoole
+
+# Vuelve a root para las configuraciones finales
+USER root
+
+# Configura permisos adicionales
+RUN chmod -R 755 storage bootstrap/cache
 
 # Copia y configura el script de inicio
 COPY docker/docker-entrypoint.sh /usr/local/bin/
