@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
     unzip \
+    libbrotli-dev \
+    pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -25,8 +27,8 @@ RUN docker-php-ext-install \
     gd \
     zip
 
-# Instala Swoole
-RUN pecl install swoole \
+# Instala Swoole deshabilitando brotli y otras extensiones no necesarias
+RUN pecl install swoole --enable-brotli=no --enable-sockets=no --enable-openssl=no --enable-http2=no --enable-mysqlnd=no \
     && docker-php-ext-enable swoole
 
 # Instala Composer
