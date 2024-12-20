@@ -1,4 +1,3 @@
-# Dockerfile
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -33,14 +32,6 @@ RUN apt-get update && apt-get upgrade -y && \
     libjpeg-turbo8-dev \
     libpng-dev \
     libzip-dev
-
-# Instala Node.js de manera correcta para que soporte las versiones requeridas
-RUN mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && \
-    apt-get install -y nodejs && \
-    npm install -g npm@latest
 
 # Instala y configura MySQL
 RUN apt-get install -y mysql-server && \
@@ -84,14 +75,11 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 # Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia todos los archivos del proyecto, incluyendo start.sh
+# Copia todos los archivos del proyecto
 COPY . .
 
-# Copia los archivos del proyecto
-COPY . /app/
-
 # Configura el archivo .env
-COPY .env.example /app/.env
+COPY .env.example .env
 RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env && \
     sed -i 's/DB_PORT=.*/DB_PORT=3306/' .env && \
@@ -100,27 +88,15 @@ RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env && \
     sed -i 's/SESSION_DRIVER=.*/SESSION_DRIVER=database/' .env
 
-# Instala dependencias de PHP
-RUN composer install --no-interaction --optimize-autoloader --no-dev
-
-# Instala Octane
-RUN composer require laravel/octane --no-interaction && \
+# Instala dependencias y configura Laravel
+RUN composer install --no-interaction --optimize-autoloader --no-dev && \
+    php artisan key:generate --force && \
     php artisan octane:install --server=swoole
 
-# Instala dependencias de Node.js y construye los assets
-RUN npm install && npm run build
-
-# Configura permisos finales
+# Configura permisos
 RUN chown -R www-data:www-data /app && \
     chmod -R 775 storage bootstrap/cache
 
-# Genera la key de la aplicación
-RUN php artisan key:generate --force
-
-# Verifica la existencia del script de inicio nuevamente
-RUN ls -la /app/start.sh && \
-    cat /app/start.sh
-
 EXPOSE 5000
 
-CMD ["./start.sh"]
+CMD ["php", "artisan", "octane:start", "--server=swoole", "--host=0.0.0.0", "--port=5000"]
