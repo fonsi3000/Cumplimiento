@@ -101,7 +101,7 @@ RUN echo 'APP_NAME="Cumplimiento EM & EL"' > .env && \
     echo 'AWS_USE_PATH_STYLE_ENDPOINT=false' >> .env && \
     echo 'VITE_APP_NAME="${APP_NAME}"' >> .env
 
-# Configura permisos antes de la instalación
+# Configura permisos
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 755 /var/www/html
 
@@ -117,10 +117,4 @@ USER root
 # Configura permisos adicionales
 RUN chmod -R 755 storage bootstrap/cache
 
-# Copia y configura el script de inicio
-COPY docker/docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
 EXPOSE 5000
-
-ENTRYPOINT ["docker-entrypoint.sh"]
