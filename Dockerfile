@@ -34,6 +34,14 @@ RUN apt-get update && apt-get upgrade -y && \
     libpng-dev \
     libzip-dev
 
+# Instala Node.js de manera correcta para que soporte las versiones requeridas
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && \
+    apt-get install -y nodejs && \
+    npm install -g npm@latest
+
 # Instala y configura MySQL
 RUN apt-get install -y mysql-server && \
     mkdir -p /var/run/mysqld && \
@@ -58,14 +66,6 @@ RUN apt-get install -y mysql-server && \
     mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION;" && \
     mysql -e "FLUSH PRIVILEGES;"
 
-# Instala Node.js de manera correcta para que soporte las versiones requeridas
-RUN mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && \
-    apt-get install -y nodejs && \
-    npm install -g npm@latest
-
 # Agrega el repositorio de PHP e instala PHP y extensiones
 RUN add-apt-repository ppa:ondrej/php -y && \
     apt-get update && \
@@ -81,13 +81,17 @@ RUN pecl install swoole && \
 # Instala Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
+# Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos del proyecto
+# Copia todos los archivos del proyecto, incluyendo start.sh
 COPY . .
 
+# Copia los archivos del proyecto
+COPY . /app/
+
 # Configura el archivo .env
-COPY .env.example .env
+COPY .env.example /app/.env
 RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env && \
     sed -i 's/DB_PORT=.*/DB_PORT=3306/' .env && \
@@ -96,25 +100,27 @@ RUN sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env && \
     sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=1524/' .env && \
     sed -i 's/SESSION_DRIVER=.*/SESSION_DRIVER=database/' .env
 
-# Instala dependencias
-RUN composer install --no-interaction --optimize-autoloader --no-dev && \
-    composer require laravel/octane --no-interaction && \
+# Instala dependencias de PHP
+RUN composer install --no-interaction --optimize-autoloader --no-dev
+
+# Instala Octane
+RUN composer require laravel/octane --no-interaction && \
     php artisan octane:install --server=swoole
 
-# Instala y construye los assets con versión específica de npm si es necesario
-RUN npm install && NODE_OPTIONS=--openssl-legacy-provider npm run build
+# Instala dependencias de Node.js y construye los assets
+RUN npm install && npm run build
 
-# Configura permisos
+# Configura permisos finales
 RUN chown -R www-data:www-data /app && \
     chmod -R 775 storage bootstrap/cache
 
 # Genera la key de la aplicación
 RUN php artisan key:generate --force
 
-# Prepara el script de inicio
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+# Verifica la existencia del script de inicio nuevamente
+RUN ls -la /app/start.sh && \
+    cat /app/start.sh
 
 EXPOSE 5000
 
-CMD ["/app/start.sh"]
+CMD ["./start.sh"]
