@@ -1,11 +1,10 @@
 #!/bin/bash
 set -e
 
-# Espera a que MySQL esté disponible
-until nc -z -v -w30 db 3306
-do
-  echo "Esperando a que la base de datos esté disponible..."
-  sleep 2
+# Espera a que MySQL esté disponible usando una función PHP
+while ! php -r "try { new PDO('mysql:host=db;dbname=cumplimiento_em', 'root', 'Espumas2025*.'); echo 'conectado\n'; } catch (PDOException \$e) { exit(1); }" > /dev/null 2>&1; do
+    echo "Esperando a que la base de datos esté disponible..."
+    sleep 2
 done
 echo "Base de datos disponible"
 
