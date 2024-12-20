@@ -17,23 +17,25 @@ fi
 # Espera a que MySQL esté disponible
 echo "Waiting for MySQL to be ready..."
 for i in {1..30}; do
-    if mysqladmin ping -h"127.0.0.1" -u"root" -p"1524" --silent; then
+    if mysqladmin ping -h"localhost" --silent; do
         break
     fi
     echo "Waiting for MySQL to be ready... $i/30"
     sleep 1
 done
 
-echo "MySQL is ready"
+# Asegura que el usuario existe y tiene los permisos correctos
+mysql -e "CREATE USER IF NOT EXISTS 'luiscarrascal'@'%' IDENTIFIED BY '1524';"
+mysql -e "GRANT ALL PRIVILEGES ON cumplimiento_db.* TO 'luiscarrascal'@'%';"
+mysql -e "FLUSH PRIVILEGES;"
 
-# Crea la tabla de sesiones si no existe
-php artisan session:table
-php artisan migrate --force
+# Prepara la base de datos
+php artisan migrate:fresh --force
 
 # Optimiza la aplicación
 php artisan optimize:clear
-php artisan cache:clear
 php artisan config:clear
+php artisan cache:clear
 php artisan optimize
 
 # Inicia Laravel Octane
