@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.2-cli
 
 ENV TZ=America/Bogota
 
@@ -118,3 +118,5 @@ USER root
 RUN chmod -R 755 storage bootstrap/cache
 
 EXPOSE 5000
+
+CMD ["php", "artisan", "octane:start", "--host=0.0.0.0", "--port=5000"]
