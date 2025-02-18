@@ -36,8 +36,8 @@ RUN docker-php-ext-install \
 RUN docker-php-ext-configure intl
 
 # Instala Swoole
-RUN pecl install swoole --enable-brotli=no --enable-sockets=no --enable-openssl=no --enable-http2=no --enable-mysqlnd=no
-RUN docker-php-ext-enable swoole
+RUN pecl install swoole && \
+    docker-php-ext-enable swoole
 
 # Instala Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -119,4 +119,4 @@ RUN chmod -R 755 storage bootstrap/cache
 
 EXPOSE 5000
 
-CMD ["php", "artisan", "octane:start", "--host=0.0.0.0", "--port=5000"]
+CMD ["php", "artisan", "octane:start", "--server=swoole", "--host=0.0.0.0", "--port=5000"]
