@@ -69,7 +69,7 @@ class DebidaDiligenciaResource extends Resource
 
                             Forms\Components\Select::make('responsable')
                                 ->options([
-                                    'Daniela Arrendo' => 'Daniela Arredondo',
+                                    'Edy Arenas Montoya' => 'Daniela Arredondo',
                                     'Sofia Velez' => 'Sofia Velez',
                                     'Catalina Hernández' => 'Catalina Hernández'
                                 ])
@@ -186,7 +186,7 @@ class DebidaDiligenciaResource extends Resource
                     ->label('Debida Diligencia')
                     ->searchable()
                     ->sortable(),
-                    
+
                 Tables\Columns\TextColumn::make('fecha_ingreso_correo')
                     ->label('Fecha Ingreso')
                     ->date()
@@ -202,7 +202,7 @@ class DebidaDiligenciaResource extends Resource
 
                 Tables\Columns\TextColumn::make('estado')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'Pendiente' => 'danger',
                         'Terminado' => 'success',
                         default => 'warning',
@@ -213,7 +213,7 @@ class DebidaDiligenciaResource extends Resource
 
                 Tables\Columns\TextColumn::make('documentacion')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'Incompleta' => 'danger',
                         'Completa' => 'success',
                         'Pendiente' => 'warning',
@@ -231,43 +231,43 @@ class DebidaDiligenciaResource extends Resource
                         return $query
                             ->when(
                                 $data['desde'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('fecha_ingreso_correo', '>=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('fecha_ingreso_correo', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('fecha_ingreso_correo', '<=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('fecha_ingreso_correo', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
-             
+
                         if ($data['desde'] ?? null) {
                             $indicators[] = Tables\Filters\Indicator::make('Desde ' . Carbon::parse($data['desde'])->format('d/m/Y'))
                                 ->removeField('desde');
                         }
-             
+
                         if ($data['hasta'] ?? null) {
                             $indicators[] = Tables\Filters\Indicator::make('Hasta ' . Carbon::parse($data['hasta'])->format('d/m/Y'))
                                 ->removeField('hasta');
                         }
-             
+
                         return $indicators;
                     }),
-                    
+
                 Tables\Filters\SelectFilter::make('estado')
                     ->options([
                         'Pendiente' => 'Pendiente',
                         'En Proceso' => 'En Proceso',
                         'Terminada' => 'Terminada',
                     ]),
-            
+
                 Tables\Filters\SelectFilter::make('nivel_riesgo')
                     ->options([
                         'Bajo' => 'Bajo',
                         'Medio' => 'Medio',
                         'Alto' => 'Alto',
                     ]),
-            
+
                 Tables\Filters\SelectFilter::make('area_solicitante')
                     ->label('Área')
                     ->options([
@@ -329,7 +329,7 @@ class DebidaDiligenciaResource extends Resource
 
                         TextEntry::make('estado')
                             ->badge()
-                            ->color(fn (string $state): string => match ($state) {
+                            ->color(fn(string $state): string => match ($state) {
                                 'Pendiente' => 'danger',
                                 'Terminado' => 'success',
                                 default => 'warning',
@@ -338,7 +338,7 @@ class DebidaDiligenciaResource extends Resource
                         TextEntry::make('nivel_riesgo')
                             ->label('Nivel de Riesgo')
                             ->badge()
-                            ->color(fn (string $state): string => match ($state) {
+                            ->color(fn(string $state): string => match ($state) {
                                 'Alto' => 'danger',
                                 'Medio' => 'warning',
                                 'Bajo' => 'success',
@@ -347,20 +347,20 @@ class DebidaDiligenciaResource extends Resource
                         TextEntry::make('coincidencia_listas')
                             ->label('Coincidencia en Listas')
                             ->badge()
-                            ->color(fn ($state): string => $state ? 'danger' : 'success')
-                            ->formatStateUsing(fn ($state) => $state ? 'SÍ' : 'NO'),
+                            ->color(fn($state): string => $state ? 'danger' : 'success')
+                            ->formatStateUsing(fn($state) => $state ? 'SÍ' : 'NO'),
 
                         TextEntry::make('coincidencia_noticia')
                             ->label('Coincidencia en Noticias')
                             ->badge()
-                            ->color(fn ($state): string => $state ? 'danger' : 'success')
-                            ->formatStateUsing(fn ($state) => $state ? 'SÍ' : 'NO'),
+                            ->color(fn($state): string => $state ? 'danger' : 'success')
+                            ->formatStateUsing(fn($state) => $state ? 'SÍ' : 'NO'),
 
                         TextEntry::make('correo_enviado_oc')
                             ->label('Correo enviado OC')
                             ->badge()
-                            ->color(fn ($state): string => $state ? 'success' : 'warning')
-                            ->formatStateUsing(fn ($state) => $state ? 'SÍ' : 'NO'),
+                            ->color(fn($state): string => $state ? 'success' : 'warning')
+                            ->formatStateUsing(fn($state) => $state ? 'SÍ' : 'NO'),
 
                         TextEntry::make('tipo_vinculacion')
                             ->label('Tipo de Vinculación'),
@@ -373,7 +373,7 @@ class DebidaDiligenciaResource extends Resource
                         TextEntry::make('documentacion')
                             ->label('Documentación')
                             ->badge()
-                            ->color(fn (string $state): string => match ($state) {
+                            ->color(fn(string $state): string => match ($state) {
                                 'Incompleta' => 'danger',
                                 'Completa' => 'success',
                                 'Pendiente' => 'warning',
@@ -385,8 +385,8 @@ class DebidaDiligenciaResource extends Resource
                         TextEntry::make('consulta')
                             ->label('Consulta')
                             ->badge()
-                            ->color(fn ($state): string => $state ? 'success' : 'warning')
-                            ->formatStateUsing(fn ($state) => $state ? 'SÍ' : 'NO'),
+                            ->color(fn($state): string => $state ? 'success' : 'warning')
+                            ->formatStateUsing(fn($state) => $state ? 'SÍ' : 'NO'),
 
                         TextEntry::make('beneficiario_final')
                             ->label('Beneficiario Final'),

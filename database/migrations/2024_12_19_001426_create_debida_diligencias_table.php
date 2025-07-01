@@ -18,7 +18,7 @@ return new class extends Migration {
                 'STN CARGA & LOGÍSTICA S.A.S'
             ])->nullable();
             $table->enum('responsable', [
-                'Daniela Arrendo',
+                'Edy Arenas Montoya',
                 'Sofia Velez',
                 'Catalina Hernández'
             ])->nullable();
