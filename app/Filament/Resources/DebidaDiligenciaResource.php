@@ -69,7 +69,7 @@ class DebidaDiligenciaResource extends Resource
 
                             Forms\Components\Select::make('responsable')
                                 ->options([
-                                    'Edy Arenas Montoya' => 'Daniela Arredondo',
+                                    'Edy Arenas Montoya' => 'Edy Arenas Montoya',
                                     'Sofia Velez' => 'Sofia Velez',
                                     'Catalina Hernández' => 'Catalina Hernández'
                                 ])
